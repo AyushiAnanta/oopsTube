@@ -4,11 +4,25 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
-app.use(cors({
-    origin: process.env.CORS_ORIGIN,
-    credentials: true
-}))
+const corsOptions = {
+  origin: function (origin, callback) {
+    // allow requests with no origin (like Postman)
+    if (!origin) return callback(null, true);
 
+    if (
+      origin.includes("vercel.app") ||
+      origin.includes("localhost")
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+};
+
+// ✅ Apply CORS middleware
+app.use(cors(corsOptions));
 //configuratios!!!!!!!!!!!!!!!!!!1
 app.use(express.json({limit: "4kb"}))
 app.use(express.urlencoded({extended: true, limit: "4kb"}))
