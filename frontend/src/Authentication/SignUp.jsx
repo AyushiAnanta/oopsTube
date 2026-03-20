@@ -1,7 +1,5 @@
 import React from 'react'
 import { useState } from 'react';
-import AuthLayout from './authLayout';
-import axios from 'axios';
 import axiosInstance from '../utils/AxiosInstance';
 
 const SignUp = ({mode, setMode}) => {
