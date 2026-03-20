@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import AuthLayout from './Authentication/authLayout';
+import AuthLayout from './Authentication/AuthLayout';
 import UserProfile from './User/UserProfile';
 import VideoPage from './Video/VideoPage';
 import HomePage from './Video/HomePage';
