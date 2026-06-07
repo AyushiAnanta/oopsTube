@@ -4,16 +4,20 @@ import AuthLayout from './Authentication/AuthLayout';
 import UserProfile from './User/UserProfile';
 import VideoPage from './Video/VideoPage';
 import HomePage from './Video/HomePage';
+import SearchPage from './Video/SearchPage';
+import CommunityPage from './Community/CommunityPage';
+import Layout from './Layout';
 
 const App = () => {
   return (
     <Routes>
       <Route path="/" element={<AuthLayout />} />
-      <Route path="/profile" element={<UserProfile />} />
-      <Route path="/video" element={<VideoPage />}/>
-      <Route path="/home" element={<HomePage />}/>
+      <Route path="/profile" element={<Layout><UserProfile /></Layout>} />
+      <Route path="/video/:videoId" element={<Layout><VideoPage /></Layout>}/>
+      <Route path="/home" element={<Layout><HomePage /></Layout>}/>
+      <Route path="/search" element={<Layout><SearchPage /></Layout>}/>
+      <Route path="/community" element={<Layout><CommunityPage /></Layout>}/>
     </Routes>
-  
   );
 };
 

@@ -1,249 +1,290 @@
-import React, { useEffect } from 'react'
-import oopsTubelogo from '../assets/oopsTube_logo.png'
-import { Pencil, Calendar, Clock, Trash2, CircleUserRound, User, ToggleRight, ToggleLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom';
-import { useContext } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
+import { Pencil, Calendar, Clock, Trash2, CircleUserRound, ToggleRight, ToggleLeft, Send } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../AuthContext';
-import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import UpdateVideoPopup from './UpdateViedeoPopup';
 import CommentPopup from '../Comments/CommentPopup';
 import axiosInstance from '../utils/AxiosInstance';
 
 const VideoPage = () => {
-
     const navigate = useNavigate();
-    const { setUserData } = useContext(AuthContext);
-    const logout = async () => {
-        try {
-            const res = await axiosInstance.post('/users/logout', {})
-    
-            setUserData('')
-            navigate('/')
-        } catch (error) {
-            console.log('nahi hua logout',error)
-        }
-    }
+    const { videoId } = useParams();
+    const { userData } = useContext(AuthContext);
 
-    const [ vid , setVid] = useState('')
-    const [ user , setUser] = useState('')
-    const [ videoUrl, setVideoUrl] = useState('')
-    const [ comments, setComments] = useState('')
-    const [ newComment, setNewComment ] = useState('')
-    const [ log, setLog ] = useState('')
-    const [ showEditCommentPopup, setShowEditCommentPopup ] = useState(false);
-    const [ EditComment, setEditComment ] = useState('');
-    const [ EditCommentId, setEditCommentId ] = useState('');
-    const [ owner, setOwner ] = useState(true);
-    const [ showEditVideoPopup, setShowEditVideoPopup ] = useState(false)
-    const [ toggleMode, setToggleMode ] = useState(true)
+    const [vid, setVid] = useState(null);
+    const [user, setUser] = useState(null);
+    const [videoUrl, setVideoUrl] = useState('');
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [showEditCommentPopup, setShowEditCommentPopup] = useState(false);
+    const [EditComment, setEditComment] = useState('');
+    const [EditCommentId, setEditCommentId] = useState('');
+    const [showEditVideoPopup, setShowEditVideoPopup] = useState(false);
+    const [toggleMode, setToggleMode] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const location = useLocation();
-
+    // Assuming the logged in user is the owner if their ID matches the video owner
+    const isOwner = userData?.user?._id === vid?.owner;
 
     const fetchVideo = async () => {
         try {
-            const res = await axiosInstance.get(`/videos/${location.state.id}`)
-            setVid(res)
-            const url = res?.data?.data?.videoFile?.replace('/upload/', '/upload/f_mp4/')
-            setVideoUrl(url)
+            const res = await axiosInstance.get(`/videos/${videoId}`);
+            const videoData = res?.data?.data;
+            setVid(videoData);
+            setToggleMode(videoData?.isPublished);
+            const url = videoData?.videoFile?.replace('/upload/', '/upload/f_mp4/');
+            setVideoUrl(url);
 
-        
-
+            if (videoData?.owner) {
+                const ownerRes = await axiosInstance.get(`/users/c/${videoData.owner}`);
+                setUser(ownerRes?.data?.data);
+            }
         } catch (error) {
-            console.log('nahiiiii aya video', error)
+            console.error('Failed to fetch video', error);
+        } finally {
+            setIsLoading(false);
         }
-    } 
-
-    const deleteVideo = async () => {
-        const res = await axiosInstance.delete(`/videos/${location.state.id}`)
-        navigate('/profile')
-    }
-
-    const callOwner = async () => {
-        if (vid?.data?.data?.owner) {
-        const owner=vid?.data?.data?.owner
-        console.log('wwwwwwwwww',owner)
-        const res = await axiosInstance.get(`/users/c/${owner}`)
-        console.log(res)
-        setUser(res)}
-    }
+    };
 
     const fetchComments = async () => {
         try {
-            const res = await axiosInstance.get(`/comments/${location.state.id}`)
-            setComments(res)
+            const res = await axiosInstance.get(`/comments/${videoId}`);
+            setComments(res?.data?.data?.docs || []);
         } catch (error) {
-            console.log('nahiiiii aye comments', error)
+            console.error('Failed to fetch comments', error);
         }
-    }
+    };
 
     useEffect(() => {
-      fetchVideo(),
-      fetchComments()
-    }, [location.state.id])
+        setIsLoading(true);
+        fetchVideo();
+        fetchComments();
+    }, [videoId]);
 
-    useEffect(() => {
-        if (vid?.data?.data?.owner) {
-            callOwner();
-        }
-        }, [vid]);
+    const deleteVideo = async () => {
+        if (!window.confirm('Are you sure you want to delete this video?')) return;
+        await axiosInstance.delete(`/videos/${videoId}`);
+        navigate('/profile');
+    };
 
-    
     const addComment = async () => {
+        if (!newComment.trim()) return;
         try {
-            const res = await axiosInstance.post(`/comments/${location.state.id}`, {content: newComment})
-            setNewComment('')
-            fetchComments()
+            await axiosInstance.post(`/comments/${videoId}`, { content: newComment });
+            setNewComment('');
+            fetchComments();
         } catch (error) {
-            console.log('not added commentts', error)
+            console.error('Failed to add comment', error);
         }
-    }
-    
-    const deleteComment = async (_id, content) => {
+    };
+
+    const deleteComment = async (_id) => {
+        if (!window.confirm('Delete this comment?')) return;
         try {
-            const res = await axiosInstance.delete(`/comments/c/${_id}`)
-            fetchComments()
-            setLog(res)
+            await axiosInstance.delete(`/comments/c/${_id}`);
+            fetchComments();
         } catch (error) {
-            console.log('comment not deleted',log, error)
+            console.error('Failed to delete comment', error);
         }
-    }
+    };
 
-    const isOwner = async () => {
-        // match current user with video or comment original owner
-        // setOwner(true/false)
-    }
-
-    const toggle = async () => {
-        // setToggleMode(!toggleMode)
-        const res = await axiosInstance.patch(`/videos/toggle/publish/${vid?.data?.data?._id}`)
-        console.log(res)
-        setToggleMode(res?.data?.data?.isPublished)
-        console.log(toggleMode)
-    }
+    const togglePublish = async () => {
+        try {
+            const res = await axiosInstance.patch(`/videos/toggle/publish/${vid?._id}`);
+            setToggleMode(res?.data?.data?.isPublished);
+        } catch (error) {
+            console.error('Toggle failed', error);
+        }
+    };
 
     return (
-    <div id='container' className='bg-neutral-900 h-auto w-full flex flex-col relative'>
-        {showEditVideoPopup && <UpdateVideoPopup 
-            onClose={() => setShowEditVideoPopup(false)}
-            onUpdateDone={() => {setShowEditVideoPopup(false)
-                fetchVideo
-            }}
-            oldtitle={vid?.data?.data?.title}
-            olddescription={vid?.data?.data?.description}
-            oldthumbnail={vid?.data?.data?.thumbnail}
-            id={vid?.data?.data?._id}/>}
-        <div id='navbar' className='bg-neutral-950 h-[12vh] w-full top-0 fixed flex justify-between px-4 py-2'>
-            <img
-                src={oopsTubelogo}
-                className='h-full object-contain'>
-            </img>
-            <button
-                type='button'
-                onClick={logout}
-                className='h-[90%] w-[25%] sm:w-[10%] h-[70%] bg-violet-600 mb-2 rounded-md font-bold text-xl text-neutral-100 hover:bg-violet-700 hover:scale-105 transition-all duration-200 mb-2 mt-2'>
-                    Log Out
-            </button>
-        </div>
-        <div id='main' className='w-full h-auto flex flex-wrap justify-evenly'>
-            <div id='video' className='p-3 rounded-md w-[97%] h-full lg:h-[80vh] lg:w-[54%] bg-neutral-800 mt-[14vh]'>
-                {videoUrl? (<video src = {videoUrl}
-                    controls
-                    autoPlay
-                    loop
-                    muted
-                    className='w-full h-full object-cover'>a</video>) : (<h1>loading...</h1>)}
-            </div>
-            <div id='description' className='p-2 rounded-md h-auto w-[97%] lg:h-[80vh] lg:w-[35%] lg:mt-[14vh] mt-8 bg-neutral-800'>
-                <h1 className='text-neutral-200 font-bold text-2xl md:text-3xl mb-4 bg-neutral-700 p-2 rounded-md'>{vid?.data?.data?.title}</h1>
-                <div className='bg-neutral-700 mt-5 w-full rounded-md h-[76%] p-3 text-neutral-300 flex flex-col'>
-                <h2 className='font-semibold text-xl mb-3'>{vid?.data?.data?.description}</h2>
-                <h3 className='text-md mb-3 flex gap-4'><Clock /> {vid?.data?.data?.duration}</h3>
-                <h3 className='text-md mb-3 flex gap-4'><Calendar /> {vid?.data?.data?.createdAt}</h3>
-                <div className='bg-neutral-700 mt-2 w-full rounded-md h-[10%] p-3 text-neutral-300 mb-4 mt-auto flex justify-between'>
-                    <h3 className='text-lg font-semibold mb-5 flex gap-4 '><CircleUserRound /> {user?.data?.data?.username}</h3>
-                    {owner && 
-                <div>
-                    <button
-                        type='button'
-                        onClick={toggle}
-                        className='rounded-md h-8 w-8 p-1 text-violet-400 hover:bg-neutral-950 hover:scale-105 transition-all duration-200'>{toggleMode && <ToggleRight />}{!toggleMode && <ToggleLeft />}
-                    </button>
-                    <button
-                        type='button'
-                        onClick={() => setShowEditVideoPopup(true)}
-                        className='rounded-md h-8 w-8 p-1 text-violet-400 hover:bg-neutral-950 hover:scale-105 transition-all duration-200'><Pencil strokeWidth={0.75}/>
-                    </button>
-                    <button
-                        type='button'
-                        onClick={deleteVideo}
-                        className='rounded-md h-8 w-8 p-1 text-neutral-100 hover:bg-violet-400 hover:scale-105 transition-all duration-200'><Trash2 strokeWidth={0.75} />
-                    </button>
-                </div>}
-            </div>
-            </div>
-            </div>
-                
-                
-            <div id='comments' className='p-5 rounded-md h-auto w-[97%] mt-8 bg-neutral-800'>
-                    <h1 className='text-neutral-200 font-bold text-2xl md:text-3xl mb-4 bg-neutral-700 p-2 rounded-md'>Comments</h1>
-                    <div>
-                        <h1 className='text-neutral-200 font-bold text-xl md:text-2xl mb-1 p-2 rounded-md'>Add Comment</h1>
-                        <div className='flex justify-between text-neutral-200 w-full gap-2'>
-                        <input
-                            type="text"
-                            placeholder="Enter comment here..."
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            className="w-4/5 h-12 p-2 mb-3 rounded bg-zinc-800 text-white placeholder:text-[#EAE5D6] border border-dashed border-violet-400"
-                        />
-                        <button
-                            type='button'
-                            onClick={addComment}
-                            className='h-12 w-[20%] bg-violet-600 rounded-md sm:font-bold text-sm sm:text-xl text-neutral-100 hover:bg-violet-700 hover:scale-105 transition-all duration-200'>
-                                Submit
-                        </button>
+        <div className='w-full flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto'>
+            {showEditVideoPopup && <UpdateVideoPopup 
+                onClose={() => setShowEditVideoPopup(false)}
+                onUpdateDone={() => {
+                    setShowEditVideoPopup(false);
+                    fetchVideo();
+                }}
+                oldtitle={vid?.title}
+                olddescription={vid?.description}
+                oldthumbnail={vid?.thumbnail}
+                id={vid?._id}/>}
+
+            {/* LEFT COLUMN: Video Player & Details */}
+            <div className='flex-1 w-full lg:w-[65%] xl:w-[70%]'>
+                {/* Video Player */}
+                <div className='w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl ring-1 ring-dark-700 mb-6'>
+                    {isLoading ? (
+                        <div className="w-full h-full animate-pulse-slow bg-dark-800"></div>
+                    ) : videoUrl ? (
+                        <video src={videoUrl} controls autoPlay className='w-full h-full object-contain outline-none'></video>
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-500">Video unavailable</div>
+                    )}
+                </div>
+
+                {/* Video Meta Info */}
+                {isLoading ? (
+                    <div className="animate-pulse-slow space-y-4">
+                        <div className="h-8 bg-dark-800 rounded-md w-3/4"></div>
+                        <div className="flex gap-4">
+                            <div className="h-10 w-10 bg-dark-800 rounded-full"></div>
+                            <div className="h-10 bg-dark-800 rounded-md w-1/4"></div>
                         </div>
                     </div>
-                    {showEditCommentPopup && <CommentPopup 
-                    onEditDone={() =>{
-                        setShowEditCommentPopup(false) 
-                        fetchComments()}
-                    }  
-                    onClose={() =>setShowEditCommentPopup(false)} 
-                    EditComment={EditComment} 
-                    EditCommentId={EditCommentId}/>}
-                   
-                    {comments?.data?.data?.docs?.map(({content, _id}) => (
-                        <div key={_id} className='flex justify-between'>
-                            <div className='text-violet-400 font-semibold text-lg m-2 flex gap-4'>
-                                <div><User /></div>
-                                <h1 className='text-neutral-100'>{content}</h1></div>
-                            {owner && <div className='m-4 flex gap-4'>
-                                <button
-                                    type='button'
-                                    onClick={() => {
-                                        setShowEditCommentPopup(true);
-                                        setEditComment(content)
-                                        setEditCommentId(_id)
-                                        console.log('edit itttt', _id, content);
-                                    }}
-                                    className='rounded-md h-8 w-8 p-1 text-violet-400 hover:bg-neutral-950 hover:scale-105 transition-all duration-200'><Pencil strokeWidth={0.75}/>
-                                </button>
-                                <button
-                                    type='button'
-                                    onClick={() => {deleteComment(_id, content)}}
-                                    className='rounded-md h-8 w-8 p-1 text-neutral-100 hover:bg-violet-400 hover:scale-105 transition-all duration-200'><Trash2 strokeWidth={0.75} />
-                                </button>
-                            </div>}
+                ) : (
+                    <div className='bg-dark-800/50 backdrop-blur-sm rounded-2xl p-6 border border-dark-700/50'>
+                        <h1 className='text-2xl md:text-3xl font-bold text-white mb-4'>{vid?.title}</h1>
+                        
+                        <div className='flex items-center justify-between flex-wrap gap-4 border-b border-dark-700 pb-4 mb-4'>
+                            {/* Channel Info */}
+                            <div className='flex items-center gap-3'>
+                                <div className='w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center text-white font-bold text-xl'>
+                                    {user?.username?.charAt(0).toUpperCase() || <CircleUserRound />}
+                                </div>
+                                <div>
+                                    <h3 className='font-bold text-lg text-white'>{user?.username || 'Unknown User'}</h3>
+                                    <p className='text-sm text-gray-400'>{user?.subscribersCount || 0} subscribers</p>
+                                </div>
+                            </div>
+
+                            {/* Owner Controls */}
+                            {isOwner && (
+                                <div className='flex items-center gap-2 bg-dark-900 px-4 py-2 rounded-full border border-dark-700'>
+                                    <button onClick={togglePublish} className='flex items-center gap-2 text-brand-400 hover:text-brand-300 transition-colors' title="Toggle Publish">
+                                        {toggleMode ? <ToggleRight /> : <ToggleLeft />}
+                                        <span className="text-sm font-medium">{toggleMode ? 'Published' : 'Private'}</span>
+                                    </button>
+                                    <div className="w-px h-6 bg-dark-700 mx-2"></div>
+                                    <button onClick={() => setShowEditVideoPopup(true)} className='p-2 text-gray-400 hover:text-white transition-colors' title="Edit Video">
+                                        <Pencil size={18}/>
+                                    </button>
+                                    <button onClick={deleteVideo} className='p-2 text-red-400 hover:text-red-300 transition-colors' title="Delete Video">
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    ))}
+
+                        {/* Description Box */}
+                        <div className='bg-dark-900/50 rounded-xl p-4'>
+                            <div className='flex items-center gap-4 text-sm text-gray-400 mb-3 font-medium'>
+                                <span className="flex items-center gap-1.5"><Clock size={16} /> {Math.round(vid?.duration || 0)}s</span>
+                                <span className="flex items-center gap-1.5"><Calendar size={16} /> {new Date(vid?.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <p className='text-gray-200 whitespace-pre-wrap leading-relaxed'>
+                                {vid?.description}
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
+                
+            {/* RIGHT COLUMN: Comments */}
+            <div className='flex-1 w-full lg:w-[35%] xl:w-[30%] flex flex-col gap-4'>
+                <div className='bg-dark-800/50 backdrop-blur-sm rounded-2xl p-6 border border-dark-700/50 min-h-[500px] flex flex-col'>
+                    <h2 className='text-xl font-bold text-white mb-6 flex items-center gap-2'>
+                        Comments <span className="text-sm font-medium text-gray-400 px-2 py-0.5 bg-dark-700 rounded-full">{comments.length}</span>
+                    </h2>
+                    
+                    {/* Add Comment */}
+                    <div className='flex gap-3 mb-8'>
+                        <div className="w-10 h-10 bg-dark-700 rounded-full shrink-0 flex items-center justify-center text-gray-400">
+                            <CircleUserRound size={20} />
+                        </div>
+                        <div className="flex-1 flex flex-col items-end gap-2">
+                            <input
+                                type="text"
+                                placeholder="Add a comment..."
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                className="w-full bg-transparent border-b border-dark-600 pb-2 text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition-colors"
+                            />
+                            {newComment && (
+                                <button
+                                    onClick={addComment}
+                                    className='px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-full flex items-center gap-2 transition-colors'
+                                >
+                                    <Send size={14} /> Comment
+                                </button>
+                            )}
+                        </div>
+                    </div>
 
+                    {showEditCommentPopup && <CommentPopup 
+                        onEditDone={() => {
+                            setShowEditCommentPopup(false);
+                            fetchComments();
+                        }}  
+                        onClose={() => setShowEditCommentPopup(false)} 
+                        EditComment={EditComment} 
+                        EditCommentId={EditCommentId}
+                    />}
+                   
+                    {/* Comments List */}
+                    <div className="flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                        {isLoading ? (
+                            Array.from({ length: 4 }).map((_, idx) => (
+                                <div key={idx} className="flex gap-3 animate-pulse-slow">
+                                    <div className="w-10 h-10 rounded-full bg-dark-700 shrink-0"></div>
+                                    <div className="flex flex-col gap-2 w-full">
+                                        <div className="h-3 bg-dark-700 rounded-md w-1/3"></div>
+                                        <div className="h-4 bg-dark-700 rounded-md w-full"></div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : comments.length > 0 ? (
+                            comments.map((commentData) => {
+                                const { content, _id, owner, createdAt } = commentData;
+                                const isCommentOwner = userData?.user?._id === owner;
+                                return (
+                                    <div key={_id} className='group flex gap-3 items-start'>
+                                        <div className="w-10 h-10 bg-dark-700 rounded-full shrink-0 flex items-center justify-center text-gray-400">
+                                            <CircleUserRound size={20} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-sm font-medium text-gray-300">User</span>
+                                                <span className="text-xs text-gray-500">
+                                                    {new Date(createdAt || Date.now()).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p className='text-gray-100 text-sm leading-relaxed'>{content}</p>
+                                        </div>
+                                        
+                                        {isCommentOwner && (
+                                            <div className='flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0'>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowEditCommentPopup(true);
+                                                        setEditComment(content);
+                                                        setEditCommentId(_id);
+                                                    }}
+                                                    className='p-1.5 text-gray-400 hover:text-brand-400 hover:bg-dark-700 rounded-md transition-colors'
+                                                    title="Edit"
+                                                >
+                                                    <Pencil size={14}/>
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteComment(_id)}
+                                                    className='p-1.5 text-gray-400 hover:text-red-400 hover:bg-dark-700 rounded-md transition-colors'
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="text-center text-gray-500 mt-10">No comments yet.</div>
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-  )
-}
+    );
+};
 
-export default VideoPage
+export default VideoPage;

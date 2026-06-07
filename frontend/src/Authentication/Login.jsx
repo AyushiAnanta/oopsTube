@@ -1,13 +1,15 @@
 import React, { useState, useContext } from 'react';
-
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../AuthContext';
 import axiosInstance from '../utils/AxiosInstance';
+import { Mail, User, Lock, LogIn, ArrowRight } from 'lucide-react';
 
-const Login = ({ mode, setMode }) => {
+const Login = ({ setMode }) => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   
   const navigate = useNavigate();
   const { setUserData } = useContext(AuthContext);
@@ -16,65 +18,111 @@ const Login = ({ mode, setMode }) => {
     setMode('signUp');
   };
 
-  const SaveIt = async () => {
-    console.log(email, username, password);
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!username && !email) {
+      setErrorMsg('Please enter username or email');
+      return;
+    }
+    if (!password) {
+      setErrorMsg('Please enter a password');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
     try {
       const res = await axiosInstance.post('/users/login', {
         username,
         email,
         password,
       });
-      console.log('Login success:', res.data);
       setUserData(res.data);
-      navigate('/profile');
+      navigate('/home');
     } catch (error) {
-      console.log('Login failed:', error.response?.data || error.message);
+      setErrorMsg(error.response?.data?.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="bg-stone-900 w-full flex-1 border border-neutral-600 text-white flex flex-col justify-center items-center rounded-xl shadow-md p-6">
-      <h1 className="text-2xl font-bold mb-6 text-[#EAE5D6]">Welcome back!</h1>
+    <div className="w-full flex flex-col">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Welcome Back</h2>
+        <p className="text-gray-400">Enter your details to access your account</p>
+      </div>
 
-      <input
-        type="email"
-        placeholder="Enter email here..."
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-4/5 p-2 mb-3 rounded bg-zinc-800 text-[#EAE5D6] placeholder:text-[#EAE5D6] border border-dashed border-violet-400"
-      />
+      <form onSubmit={handleLogin} className="space-y-5">
+        {errorMsg && (
+          <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm text-center">
+            {errorMsg}
+          </div>
+        )}
 
-      <input
-        type="text"
-        placeholder="Enter username here..."
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        className="w-4/5 p-2 mb-3 rounded bg-zinc-800 text-white placeholder:text-[#EAE5D6] border border-dashed border-violet-400"
-      />
+        <div className="space-y-4">
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-brand-400 transition-colors">
+              <Mail size={18} />
+            </div>
+            <input
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
+            />
+          </div>
 
-      <input
-        type="password"
-        placeholder="Enter password here..."
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="w-4/5 p-2 mb-6 rounded bg-zinc-800 text-white placeholder:text-[#EAE5D6] border border-dashed border-violet-400"
-      />
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-brand-400 transition-colors">
+              <User size={18} />
+            </div>
+            <input
+              type="text"
+              placeholder="Username (optional)"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
+            />
+          </div>
 
-      <div className="w-4/5 mt-4 flex flex-row bg-neutral-800 justify-center items-center border border-violet-400 rounded-full">
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-brand-400 transition-colors">
+              <Lock size={18} />
+            </div>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
+            />
+          </div>
+        </div>
+
         <button
-          type="button"
-          onClick={doSignUp}
-          className="w-[30%] py-2 bg-neutral-800 text-[#EAE5D6] font-bold hover:bg-violet-500 transition-all duration-200 rounded-3xl"
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 mt-6 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
         >
-          Sign Up
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+          ) : (
+            <>
+              Sign In <LogIn size={18} className="group-hover:translate-x-1 transition-transform" />
+            </>
+          )}
         </button>
+      </form>
 
+      <div className="mt-8 text-center text-gray-400 text-sm">
+        Don't have an account?{' '}
         <button
-          type="button"
-          onClick={SaveIt}
-          className="w-[70%] py-2 bg-violet-300 text-neutral-800 font-bold hover:bg-violet-500 transition-all duration-200 border border-violet-400 rounded-3xl"
+          onClick={doSignUp}
+          className="text-brand-400 hover:text-brand-300 font-semibold hover:underline inline-flex items-center gap-1 transition-colors"
         >
-          Login
+          Sign up now <ArrowRight size={14} />
         </button>
       </div>
     </div>

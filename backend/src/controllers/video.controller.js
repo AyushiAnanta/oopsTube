@@ -37,7 +37,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 })
 
 const getAllUserVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, sortBy = 'createdAt', sortType = -1 } = req.query;
+    const { page = 1, limit = 20, sortBy = 'createdAt', sortType = -1, query } = req.query;
 
     const options = {
         page: parseInt(page),
@@ -45,9 +45,19 @@ const getAllUserVideos = asyncHandler(async (req, res) => {
         sort: { [sortBy]: parseInt(sortType) }
     };
 
-    const aggregate = Video.aggregate([
-        { $sort: options.sort }
-    ]);
+    const pipeline = [];
+
+    if (query) {
+        pipeline.push({
+            $match: {
+                title: { $regex: query, $options: 'i' }
+            }
+        });
+    }
+
+    pipeline.push({ $sort: options.sort });
+
+    const aggregate = Video.aggregate(pipeline);
 
     const videos = await Video.aggregatePaginate(aggregate, options);
 
@@ -140,10 +150,25 @@ const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: get video by id
 
-    const checkVideoId = await Video.findById(videoId)
+    const checkVideoId = await Video.findByIdAndUpdate(
+        videoId,
+        {
+            $inc: { views: 1 }
+        },
+        { new: true }
+    )
 
     if (!checkVideoId) {
         throw new ApiError(400, "video not found")
+    }
+
+    if (req.user?._id) {
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $addToSet: { watchHistory: videoId }
+            }
+        )
     }
 
     return res.status(200).json(new ApiResponse(200, checkVideoId , "video found successfully"))

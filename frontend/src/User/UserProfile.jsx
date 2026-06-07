@@ -1,213 +1,268 @@
-import React, { useEffect } from 'react'
-import oopsTubelogo from '../assets/oopsTube_logo.png'
-import coverImage from '../assets/DSC03001.JPG'
-import { Pencil } from 'lucide-react'
-import { Plus } from 'lucide-react'
-import { useNavigate } from 'react-router-dom';
-import { useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
+import { Pencil, Plus, PlayCircle, Clock, KeyRound, Upload } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../AuthContext';
-import { useState } from 'react';
-import AddVideoPopup from '../Video/AddVideoPopup'
-import UpdateAccountPopup from './UpdateAccountPopup'
-import axiosInstance from '../utils/AxiosInstance'
+import AddVideoPopup from '../Video/AddVideoPopup';
+import UpdateAccountPopup from './UpdateAccountPopup';
+import ChangePasswordPopup from './ChangePasswordPopup';
+import axiosInstance from '../utils/AxiosInstance';
 
 const UserProfile = () => {
+    const { userData } = useContext(AuthContext);
+    const [historyList, setHistoryList] = useState([]);
+    const [videos, setVideos] = useState([]);
+    const [addVideoPopup, setAddVideoPopup] = useState(false);
+    const [accountUpdatePopup, setAccountUpdatePopup] = useState(false);
+    const [changePasswordPopup, setChangePasswordPopup] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isUploading, setIsUploading] = useState(false);
 
-    const { userData, setUserData } = useContext(AuthContext);
-    const [ history, setHistory ] = useState(false)
-    const [ showVideos, setShowVideos ] = useState(false)
-    const [ video, setVideo ] = useState([])
-    const [ addVideoPopup, setAddVideoPopup] = useState(false)
-    const [ AccountUpdatePopup, setAccountUpdatePopup] = useState(false)
-
+    const avatarInputRef = useRef(null);
+    const coverInputRef = useRef(null);
 
     const navigate = useNavigate();
-    
-    const fetchHistory =async () => {
-        const hist = await axiosInstance.get('/users/history')
-        console.log('histttttttttt',hist.data.data.length)
-        if (hist.data.data.length != 0) {
-            setHistory(true)
+
+    const fetchHistory = async () => {
+        try {
+            const hist = await axiosInstance.get('/users/history');
+            setHistoryList(hist.data?.data || []);
+        } catch (error) {
+            console.error('Failed to fetch history', error);
         }
-    }
+    };
 
     const fetchVideos = async () => {
-        const vid = await axiosInstance.get('/videos/'
-        )
-        setShowVideos(true)
-        console.log(video)
-        setVideo(vid)
-        console.log(video)
-        // if (video.data.data.docs.length != 0) {
-        //     console.log('videoooooooooooooos', video.data.data.docs[0].thumbnail)
-        //     setShowVideos(true)
-        //     video.data.data.docs.forEach(function(val) {
-        //         console.log(val.thumbnail)
-        //     })
-        // }
-
-        
-    }
-    
-    useEffect(() => {
-        fetchHistory()
-        fetchVideos()
-
-    },[])
-
-    const logout = async () => {
         try {
-            const res = await axiosInstance.post('/users/logout', {})
-    
-            setUserData('')
-            navigate('/')
+            const vid = await axiosInstance.get('/videos/');
+            setVideos(vid.data?.data?.docs || []);
         } catch (error) {
-            console.log('nahi hua',error)
+            console.error('Failed to fetch videos', error);
         }
-    }
+    };
 
-    const videoPage = (_id) => {
-        navigate(`/video`, {state: {id: _id}})
-    }
-  
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            await Promise.all([fetchHistory(), fetchVideos()]);
+            setIsLoading(false);
+        };
+        loadData();
+    }, []);
+
+    const formatDuration = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleAvatarUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('avatar', file);
+        try {
+            await axiosInstance.patch('/users/avatar', formData);
+            window.location.reload(); // Quickest way to refresh AuthContext and UI
+        } catch (error) {
+            console.error('Avatar upload failed', error);
+            alert('Failed to upload avatar');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleCoverImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('cover-image', file);
+        try {
+            await axiosInstance.patch('/users/cover-image', formData);
+            window.location.reload(); 
+        } catch (error) {
+            console.error('Cover image upload failed', error);
+            alert('Failed to upload cover image');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     if (!userData?.data?.user) {
-        return (<div>Profile Loading</div>)
+        return (
+            <div className="flex h-[80vh] items-center justify-center">
+                <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
     }
 
+    const user = userData.data.user;
 
+    const VideoCard = ({ video }) => (
+        <Link 
+            to={`/video/${video._id}`} 
+            className="group flex flex-col gap-3 cursor-pointer shrink-0 w-[280px] sm:w-[320px]"
+        >
+            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-dark-800">
+                <img 
+                    src={video.thumbnail} 
+                    alt={video.title} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <PlayCircle className="text-white w-12 h-12 opacity-80" />
+                </div>
+                <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-medium px-2 py-1 rounded-md backdrop-blur-sm">
+                    {formatDuration(video.duration)}
+                </div>
+            </div>
+            <div className="flex gap-3 px-1">
+                <div className="flex flex-col">
+                    <h3 className="text-gray-100 font-semibold line-clamp-2 leading-tight group-hover:text-brand-400 transition-colors">
+                        {video.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm mt-1">
+                        {video.views || 0} views • {new Date(video.createdAt).toLocaleDateString()}
+                    </p>
+                </div>
+            </div>
+        </Link>
+    );
 
     return (
-        
-        <div id='container' className='bg-neutral-900 h-auto w-full flex flex-col relative'>
-            {addVideoPopup && <AddVideoPopup onAddDone={() =>{
-                        setAddVideoPopup(false)
-                    fetchVideos()}
-                    }  
-                    onClose={() =>setAddVideoPopup(false)} />}
-            {AccountUpdatePopup && <UpdateAccountPopup />}
-            <div id='navbar' className='bg-neutral-950 h-[12vh] w-full top-0 fixed flex justify-between px-4 py-2'>
-                <img
-                    src={oopsTubelogo}
-                    className='h-full object-contain'>
-                </img>
-                <button
-                    onClick={logout}
-                    type='button'
-                    className='h-[90%] w-[25%] sm:w-[10%] h-[70%] bg-indigo-600 mb-2 rounded-md font-bold text-xl text-neutral-100 hover:bg-indigo-700 hover:scale-105 transition-all duration-200 mb-2 mt-2'>
-                        Log Out
+        <div className='w-full max-w-[1600px] mx-auto animate-fade-in'>
+            {addVideoPopup && <AddVideoPopup onAddDone={() => { setAddVideoPopup(false); fetchVideos(); }} onClose={() => setAddVideoPopup(false)} />}
+            {accountUpdatePopup && <UpdateAccountPopup onClose={() => setAccountUpdatePopup(false)} />}
+            {changePasswordPopup && <ChangePasswordPopup onClose={() => setChangePasswordPopup(false)} />}
+            
+            <input type="file" accept="image/*" className="hidden" ref={avatarInputRef} onChange={handleAvatarUpload} />
+            <input type="file" accept="image/*" className="hidden" ref={coverInputRef} onChange={handleCoverImageUpload} />
+
+            {/* Cover Photo */}
+            <div 
+                className='h-[20vh] md:h-[30vh] w-full rounded-2xl bg-dark-800 relative mb-16 shadow-lg group'
+                style={user.coverImage ? { backgroundImage: `url(${user.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+            >
+                {/* Cover Image Update Button */}
+                <button 
+                    onClick={() => coverInputRef.current?.click()}
+                    className='absolute top-4 right-4 px-4 py-2 bg-black/60 hover:bg-black/80 text-white rounded-lg flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm border border-white/10'
+                >
+                    <Upload size={16} /> Update Cover
                 </button>
+
+                {/* Avatar floating over cover */}
+                <div className='absolute -bottom-12 left-8 md:left-12 flex items-end gap-6'>
+                    <div className='relative group/avatar'>
+                        <div 
+                            className='w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-dark-900 bg-dark-700 shadow-xl overflow-hidden'
+                            style={user.avatar ? { backgroundImage: `url(${user.avatar})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                        />
+                        <button 
+                            onClick={() => avatarInputRef.current?.click()}
+                            className='absolute bottom-2 right-2 p-2 bg-brand-600 hover:bg-brand-500 text-white rounded-full shadow-lg transition-transform hover:scale-110 z-10'
+                        >
+                            <Pencil size={16} />
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div id='main'>
-                <div id='images' className='h-[25vh] md:h-[35vh] w-full bg-neutral-800 mt-[12vh] flex justify-between items-center gap-6' 
-                style={userData?.data?.user?.coverImage
-                    ? { backgroundImage: `url(${userData.data.user.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                    : { backgroundColor: '#906A4E' }}>
-                    <div id='avatar' className='aspect-square h-[80%] rounded-full ml-[5vw]' 
-                    style={userData?.data?.user?.avatar
-                        ? { backgroundImage: `url(${userData.data.user.avatar})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                        : { backgroundColor: '#906A4E' }}></div>
-                    <div className='h-full w-[45px]'>
-                        <button
-                            type='button'
-                            className='h-[20%] w-[40px] h-[40px] flex justify-center items-center mb-2 rounded-md font-bold text-xl text-neutral-100 mb-2 mt-2 hover:scale-105 hover:bg-indigo-700 transition-all duration-200'>
-                            <Pencil />
+
+            {/* User Info Section */}
+            <div className='flex flex-col md:flex-row gap-6 px-4 md:px-12 mb-12'>
+                <div className='flex-1'>
+                    <h1 className='text-3xl md:text-4xl font-bold text-white mb-1'>{user.fullname}</h1>
+                    <p className='text-gray-400 font-medium text-lg mb-4'>@{user.username}</p>
+                    <div className='flex flex-wrap items-center gap-4'>
+                        <div className='flex items-center gap-4 text-gray-400 text-sm bg-dark-800/50 w-fit px-4 py-2 rounded-xl border border-dark-700/50'>
+                            <span>{user.email}</span>
+                            <button onClick={() => setAccountUpdatePopup(true)} className='hover:text-brand-400 transition-colors'><Pencil size={14} /></button>
+                        </div>
+                        <button 
+                            onClick={() => setChangePasswordPopup(true)}
+                            className='flex items-center gap-2 text-gray-400 text-sm bg-dark-800/50 hover:bg-dark-700 w-fit px-4 py-2 rounded-xl border border-dark-700/50 transition-colors'
+                        >
+                            <KeyRound size={14} /> Change Password
                         </button>
                     </div>
                 </div>
-                <div id='bio' className='h-[30vh] md:h-[20vh] full p-5 bg-neutral-800 p-5 m-5 mx-5 rounded-md flex-row md:flex gap-4'>
-                    <div id='info' className='h-[45%] md:h-full w-full md:w-[80%] bg-neutral-700 rounded-sm px-5 mb-4'>
-                        <div id='fullname' className='h-[30%] w-full m-1 flex flex-row gap-4 items-center mt-2 '>
-                            <h1 className='mt-3 text-stone-300 font-bold text-xl md:text-3xl mb-2'>{userData.data.user.fullname}</h1>
-                            <button
-                                type='button'
-                                className='h-full mt-3 w-[30px] h-[30px] flex justify-center items-center mb-2 rounded-md font-bold text-base text-neutral-100 mb-2 mt-2 hover:scale-105 hover:bg-indigo-700 transition-all duration-200'>
-                                <Pencil />
-                            </button>
-                        </div>
-                        <div className='h-[30%] w-full m-1 flex flex-row items-center'>
-                            <h2 className='username text-stone-200 text-md md:text-lg font-bold '>{userData.data.user.username}</h2>
-                        </div>
-                        <div className='h-[30%] w-full m-1 flex flex-row items-center gap-4'>
-                            <h5 className='text-stone-200 font-bold text-sm md:text-md mb-3'>{userData.data.user.email}</h5>
-                            <button
-                                type='button'
-                                className='w-[30px] h-[30px] flex justify-center items-center mb-6 rounded-md font-bold text-base text-neutral-100 mb-2 mt-2 hover:scale-105 hover:bg-indigo-700 transition-all duration-200'>
-                                <Pencil />
-                            </button>
-                        </div>
-                    </div>
-                    <div id='subscribe' className='h-[45%] flex flex-col items-center justify-center md:h-full w-full md:w-[20%] bg-neutral-700 rounded-lg'>
-                        
-                        <button
-                                type='button'
-                                onClick={()=> setAccountUpdatePopup(true)}
-                                className='mx-1 h-[42%] w-[95%] flex justify-center items-center rounded-md font-bold text-xl bg-indigo-600 text-neutral-300 mb-2 hover:bg-indigo-800 hover:scale-105 transition-all duration-200'>
-                                Update Account
-                        </button>
-                        <button
-                                type='button'
-                                className='mx-1 h-[42%] w-[95%] flex justify-center items-center rounded-md font-bold text-xl bg-indigo-600 text-neutral-300 hover:bg-indigo-800 hover:scale-105 transition-all duration-200'>
-                                Update Avatar
-                        </button>
-                    </div> 
-                </div>
-                <div id='videoo' className='h-[40vh] sm:h-[45vh] bg-neutral-800 m-5 p-3 rounded-md'>
-                    <div className='flex justify-between'>
-                    <h1 className='text-neutral-400 font-bold text-3xl mb-3'>Your Videos</h1>
+                
+                <div className='flex flex-col sm:flex-row gap-3 md:items-end justify-end'>
                     <button 
-                        type='button'
-                        onClick={()=> {setAddVideoPopup(true)}}
-                        className='h-full flex justify-center items-center mb-2 rounded-md font-bold text-base text-neutral-100 hover:scale-105 hover:bg-indigo-700 transition-all duration-200'>
-                            <Plus  size={36} strokeWidth={3}/>
+                        onClick={() => setAccountUpdatePopup(true)}
+                        className='px-6 py-2.5 bg-dark-800 hover:bg-dark-700 text-white font-semibold rounded-xl border border-dark-700 transition-all'
+                    >
+                        Update Account
                     </button>
+                    <button 
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={isUploading}
+                        className='px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-[0_0_15px_rgba(139,92,246,0.4)] transition-all disabled:opacity-50'
+                    >
+                        {isUploading ? 'Uploading...' : 'Update Avatar'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Your Videos Section */}
+            <div className='mb-12 px-4 md:px-12'>
+                <div className='flex items-center justify-between mb-6 border-b border-dark-700 pb-4'>
+                    <h2 className='text-2xl font-bold text-white'>Your Videos</h2>
+                    <button 
+                        onClick={() => setAddVideoPopup(true)}
+                        className='flex items-center gap-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 text-brand-400 font-semibold rounded-lg border border-dark-700 transition-all'
+                    >
+                        <Plus size={18} /> Upload Video
+                    </button>
+                </div>
+
+                {isLoading ? (
+                    <div className="flex gap-6 overflow-hidden">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="w-[320px] h-[250px] bg-dark-800 rounded-xl animate-pulse-slow shrink-0" />
+                        ))}
                     </div>
-                    
-                    {showVideos && <div className='h-[30vh] sm:h-[35vh] rounded-sm overflow-x-auto w-full bg-neutral-700 flex p-5 gap-5 scroll-smooth scrollbar-hide'>
-                        {video.data.data.docs.map(({ thumbnail, title, duration, _id }) => (
-                            <div key={_id} className='flex flex-col' onClick={() => videoPage(_id)}>
-                                <div className='h-[80%] w-[75vw] sm:w-[300px] rounded-md mb-2 hover:scale-105 transition-transform duration-300' 
-                                style={ {backgroundImage: `url(${thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center'} }></div>
-                                <div className='bg-neutral-800 h-[15%] w-[75vw] sm:w-[300px] p-1 flex flex-row justify-between px-2 rounded-sm'>
-                                    <h1 className='text-neutral-400 font-bold text-xl overflow-hidden whitespace-nowrap text-ellipsis w-[75%]'>
-                                        {title}
-                                    </h1>
-                                    <h1 className='text-neutral-400 font-bold text-xl'>
-                                        {Math.round(duration)}
-                                    </h1>
-                                </div>
-                            </div>
-                            ))}
-                        {/* <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div> */}
-                    </div>}
-                    {!showVideos && <div className='h-[30vh] sm:h-[35vh] rounded-sm overflow-x-auto w-full bg-neutral-700 flex p-5 items-center justify-center text-neutral-400 font-bold text-3xl'>no videos yet</div>}
+                ) : videos.length > 0 ? (
+                    <div className='flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x'>
+                        {videos.map((video) => <div className="snap-start" key={video._id}><VideoCard video={video} /></div>)}
+                    </div>
+                ) : (
+                    <div className='w-full py-16 bg-dark-800/30 rounded-2xl border border-dark-700/50 flex flex-col items-center justify-center text-center'>
+                        <PlayCircle size={48} className="text-gray-600 mb-4" />
+                        <h3 className="text-xl font-bold text-gray-300 mb-2">No videos yet</h3>
+                        <p className="text-gray-500 max-w-md">You haven't uploaded any videos to your channel yet. Click the upload button to get started.</p>
+                    </div>
+                )}
+            </div>
 
+            {/* Watch History Section */}
+            <div className='px-4 md:px-12 mb-12'>
+                <div className='flex items-center gap-3 mb-6 border-b border-dark-700 pb-4'>
+                    <Clock className="text-brand-400" size={24} />
+                    <h2 className='text-2xl font-bold text-white'>Watch History</h2>
                 </div>
-                <div id='history' className='h-[40vh] sm:h-[45vh] bg-neutral-800 m-5 p-3 rounded-md'>
-                    
 
-                    <h1 className='text-neutral-400 font-bold text-3xl mb-3'>Watch History</h1>
-                    {history && <div className='h-[30vh] sm:h-[35vh] rounded-sm overflow-x-auto w-full bg-neutral-700 flex p-5 gap-5 scroll-smooth scrollbar-hide'>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                        <div className='h-full min-w-[75vw] sm:min-w-[300px] bg-yellow-200 rounded-md'></div>
-                    </div>}
-                    {!history && <div className='h-[30vh] sm:h-[35vh] rounded-sm overflow-x-auto w-full bg-neutral-700 flex p-5 items-center justify-center text-neutral-400 font-bold text-3xl'>no videos watched yet</div>}
-                </div>
+                {isLoading ? (
+                    <div className="flex gap-6 overflow-hidden">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="w-[320px] h-[250px] bg-dark-800 rounded-xl animate-pulse-slow shrink-0" />
+                        ))}
+                    </div>
+                ) : historyList.length > 0 ? (
+                    <div className='flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x'>
+                        {historyList.map((video) => <div className="snap-start" key={video._id}><VideoCard video={video} /></div>)}
+                    </div>
+                ) : (
+                    <div className='w-full py-16 bg-dark-800/30 rounded-2xl border border-dark-700/50 flex flex-col items-center justify-center text-center'>
+                        <Clock size={48} className="text-gray-600 mb-4" />
+                        <h3 className="text-xl font-bold text-gray-300 mb-2">History is empty</h3>
+                        <p className="text-gray-500 max-w-md">Videos you watch will show up here so you can easily find them later.</p>
+                    </div>
+                )}
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default UserProfile
+export default UserProfile;

@@ -2,10 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html, body, #root {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    @apply bg-dark-900 text-gray-100;
+  }
+}
 
-html, body, #root {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
+@layer utilities {
+  .glass-panel {
+    @apply bg-dark-800/80 backdrop-blur-md border border-dark-700/50 shadow-xl;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #18181b; 
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5b21b6; 
 }

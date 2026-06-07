@@ -1,8 +1,10 @@
 // frontend/src/utils/axiosInstance.js
 import axios from 'axios';
 
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL + '/api/v1',
+  baseURL: apiUrl + '/api/v1',
   withCredentials: true,
 });
 // RESPONSE INTERCEPTOR
