@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import oopsTubelogo from './assets/oopsTube_logo.png';
 import { AuthContext } from './AuthContext';
 import axiosInstance from './utils/AxiosInstance';
-import { Home, Compass, PlaySquare, Clock, User as UserIcon, Search, MessageSquare, Users } from 'lucide-react';
+import { Home, Compass, PlaySquare, Clock, User as UserIcon, Search, MessageSquare, Users, Gift } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const navigate = useNavigate();
@@ -86,6 +86,15 @@ const Layout = ({ children }) => {
             label="Subscriptions" 
             to="/subscriptions" 
           />
+          <button 
+            onClick={() => navigate('/surprise')}
+            className="flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group text-brand-400 hover:bg-brand-500/20 hover:text-brand-300 btn-squish"
+          >
+            <span className="transition-transform group-hover:scale-110">
+              <Gift size={20} />
+            </span>
+            <span className="font-bold">Surprise Me!</span>
+          </button>
           <hr className="border-dark-700 my-4" />
           <SidebarItem 
             icon={<UserIcon size={20} />} 

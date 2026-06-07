@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { Pencil, Calendar, Clock, Trash2, CircleUserRound, ToggleRight, ToggleLeft, Send, ThumbsUp } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../AuthContext';
 import UpdateVideoPopup from './UpdateViedeoPopup';
@@ -176,20 +177,35 @@ const VideoPage = () => {
                             {/* Owner Controls and Like Button */}
                             <div className='flex items-center gap-4'>
                                 <button
-                                    onClick={async () => {
+                                    onClick={async (e) => {
                                         if(!userData) return;
                                         try {
                                             const res = await axiosInstance.post(`/likes/toggle/v/${vid._id}`);
+                                            const isNowLiked = res.data.data.liked;
+                                            
+                                            // Trigger confetti if liked
+                                            if (isNowLiked) {
+                                                const rect = e.target.getBoundingClientRect();
+                                                const x = (rect.left + rect.width / 2) / window.innerWidth;
+                                                const y = (rect.top + rect.height / 2) / window.innerHeight;
+                                                confetti({
+                                                    particleCount: 80,
+                                                    spread: 60,
+                                                    origin: { x, y },
+                                                    colors: ['#ec4899', '#a78bfa', '#fbcfe8']
+                                                });
+                                            }
+
                                             setVid(prev => ({
                                                 ...prev,
-                                                isLiked: res.data.data.liked,
-                                                likesCount: res.data.data.liked ? prev.likesCount + 1 : prev.likesCount - 1
+                                                isLiked: isNowLiked,
+                                                likesCount: isNowLiked ? prev.likesCount + 1 : prev.likesCount - 1
                                             }));
                                         } catch (error) {
                                             console.error('Failed to toggle like', error);
                                         }
                                     }}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors border ${
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors border btn-squish ${
                                         vid?.isLiked 
                                             ? 'bg-brand-600/20 text-brand-400 border-brand-500/50 hover:bg-brand-600/30' 
                                             : 'bg-dark-800 text-gray-300 border-dark-700 hover:bg-dark-700'

@@ -8,28 +8,50 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    @apply bg-dark-900 text-gray-100;
+    @apply text-gray-100;
   }
+
+  body {
+    background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #1f4068, #3a0ca3);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    min-height: 100vh;
+  }
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @layer utilities {
   .glass-panel {
-    @apply bg-dark-800/80 backdrop-blur-md border border-dark-700/50 shadow-xl;
+    @apply bg-dark-800/60 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  /* Fun bouncy button interactions */
+  .btn-squish {
+    @apply transition-transform duration-200 active:scale-90 hover:scale-105;
+  }
+  
+  .card-bounce {
+    @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-500/20;
   }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #18181b; 
+  background: rgba(22, 33, 62, 0.5); 
 }
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46; 
-  border-radius: 4px;
+  background: #0f3460; 
+  border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #5b21b6; 
+  background: #ec4899; /* brand-500 */
 }

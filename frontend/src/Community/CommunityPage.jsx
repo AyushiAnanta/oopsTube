@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import axiosInstance from '../utils/AxiosInstance';
 import { AuthContext } from '../AuthContext';
 import { MessageSquarePlus, Trash2, Pencil, CircleUserRound, Send, ThumbsUp } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 const CommunityPage = () => {
     const { userData } = useContext(AuthContext);
@@ -182,15 +183,30 @@ const CommunityPage = () => {
                                             <p className="text-gray-200 leading-relaxed whitespace-pre-wrap mb-3">{tweet.content}</p>
                                             <div className="flex items-center gap-4 mt-2">
                                                 <button
-                                                    onClick={async () => {
+                                                    onClick={async (e) => {
                                                         try {
                                                             const res = await axiosInstance.post(`/likes/toggle/t/${tweet._id}`);
+                                                            const isNowLiked = res.data.data.liked;
+                                                            
+                                                            // Trigger confetti if liked
+                                                            if (isNowLiked) {
+                                                                const rect = e.target.getBoundingClientRect();
+                                                                const x = (rect.left + rect.width / 2) / window.innerWidth;
+                                                                const y = (rect.top + rect.height / 2) / window.innerHeight;
+                                                                confetti({
+                                                                    particleCount: 50,
+                                                                    spread: 50,
+                                                                    origin: { x, y },
+                                                                    colors: ['#ec4899', '#a78bfa', '#fbcfe8']
+                                                                });
+                                                            }
+
                                                             setTweets(prev => prev.map(t => {
                                                                 if (t._id === tweet._id) {
                                                                     return {
                                                                         ...t,
-                                                                        isLiked: res.data.data.liked,
-                                                                        likesCount: res.data.data.liked ? (t.likesCount || 0) + 1 : (t.likesCount || 0) - 1
+                                                                        isLiked: isNowLiked,
+                                                                        likesCount: isNowLiked ? (t.likesCount || 0) + 1 : (t.likesCount || 0) - 1
                                                                     };
                                                                 }
                                                                 return t;
