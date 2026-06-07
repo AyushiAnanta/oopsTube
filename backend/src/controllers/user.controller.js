@@ -252,14 +252,70 @@ const getCurrentUser = asyncHandler(async(req, res) => {
 })
 
 const getUserById = asyncHandler(async(req, res) => {
-    const {userId} = req.params
-    const checkUserId = await User.findById(userId)
+    const {userId} = req.params;
     
-    if (!checkUserId) {
-        throw new ApiError(400, "user not found")
+    if (!mongoose.isValidObjectId(userId)) {
+        throw new ApiError(400, "invalid user id");
     }
-    
-        return res.status(200).json(new ApiResponse(200, checkUserId , "user found successfully"))
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(userId)
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers"
+                },
+                channelsSubscribedToCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                fullname: 1,
+                username: 1,
+                subscribersCount: 1,
+                channelsSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            }
+        }
+    ]);
+
+    if (!channel?.length) {
+        throw new ApiError(404, "user not found");
+    }
+
+    return res.status(200).json(new ApiResponse(200, channel[0] , "user found successfully"));
 })
 
 const updateAccountDetails = asyncHandler(async(req, res) => {

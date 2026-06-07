@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { Pencil, Calendar, Clock, Trash2, CircleUserRound, ToggleRight, ToggleLeft, Send } from 'lucide-react';
+import { Pencil, Calendar, Clock, Trash2, CircleUserRound, ToggleRight, ToggleLeft, Send, ThumbsUp } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../AuthContext';
 import UpdateVideoPopup from './UpdateViedeoPopup';
@@ -24,7 +24,7 @@ const VideoPage = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     // Assuming the logged in user is the owner if their ID matches the video owner
-    const isOwner = userData?.user?._id === vid?.owner;
+    const isOwner = (userData?.user?._id || userData?.data?.user?._id) === vid?.owner;
 
     const fetchVideo = async () => {
         try {
@@ -137,7 +137,6 @@ const VideoPage = () => {
                         <h1 className='text-2xl md:text-3xl font-bold text-white mb-4'>{vid?.title}</h1>
                         
                         <div className='flex items-center justify-between flex-wrap gap-4 border-b border-dark-700 pb-4 mb-4'>
-                            {/* Channel Info */}
                             <div className='flex items-center gap-3'>
                                 <div className='w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center text-white font-bold text-xl'>
                                     {user?.username?.charAt(0).toUpperCase() || <CircleUserRound />}
@@ -146,24 +145,76 @@ const VideoPage = () => {
                                     <h3 className='font-bold text-lg text-white'>{user?.username || 'Unknown User'}</h3>
                                     <p className='text-sm text-gray-400'>{user?.subscribersCount || 0} subscribers</p>
                                 </div>
+                                
+                                {!isOwner && user && (
+                                    <button 
+                                        onClick={async () => {
+                                            try {
+                                                const res = await axiosInstance.post(`/subscriptions/c/${user._id}`);
+                                                setUser(prev => ({
+                                                    ...prev,
+                                                    isSubscribed: res.data.data.subscribed,
+                                                    subscribersCount: res.data.data.subscribed 
+                                                        ? prev.subscribersCount + 1 
+                                                        : prev.subscribersCount - 1
+                                                }));
+                                            } catch (error) {
+                                                console.error('Failed to toggle subscription', error);
+                                            }
+                                        }}
+                                        className={`ml-4 px-4 py-1.5 rounded-full font-medium transition-colors ${
+                                            user.isSubscribed 
+                                                ? 'bg-dark-700 text-gray-300 hover:bg-dark-600' 
+                                                : 'bg-white text-black hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        {user.isSubscribed ? 'Subscribed' : 'Subscribe'}
+                                    </button>
+                                )}
                             </div>
 
-                            {/* Owner Controls */}
-                            {isOwner && (
-                                <div className='flex items-center gap-2 bg-dark-900 px-4 py-2 rounded-full border border-dark-700'>
-                                    <button onClick={togglePublish} className='flex items-center gap-2 text-brand-400 hover:text-brand-300 transition-colors' title="Toggle Publish">
-                                        {toggleMode ? <ToggleRight /> : <ToggleLeft />}
-                                        <span className="text-sm font-medium">{toggleMode ? 'Published' : 'Private'}</span>
-                                    </button>
-                                    <div className="w-px h-6 bg-dark-700 mx-2"></div>
-                                    <button onClick={() => setShowEditVideoPopup(true)} className='p-2 text-gray-400 hover:text-white transition-colors' title="Edit Video">
-                                        <Pencil size={18}/>
-                                    </button>
-                                    <button onClick={deleteVideo} className='p-2 text-red-400 hover:text-red-300 transition-colors' title="Delete Video">
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                            )}
+                            {/* Owner Controls and Like Button */}
+                            <div className='flex items-center gap-4'>
+                                <button
+                                    onClick={async () => {
+                                        if(!userData) return;
+                                        try {
+                                            const res = await axiosInstance.post(`/likes/toggle/v/${vid._id}`);
+                                            setVid(prev => ({
+                                                ...prev,
+                                                isLiked: res.data.data.liked,
+                                                likesCount: res.data.data.liked ? prev.likesCount + 1 : prev.likesCount - 1
+                                            }));
+                                        } catch (error) {
+                                            console.error('Failed to toggle like', error);
+                                        }
+                                    }}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-colors border ${
+                                        vid?.isLiked 
+                                            ? 'bg-brand-600/20 text-brand-400 border-brand-500/50 hover:bg-brand-600/30' 
+                                            : 'bg-dark-800 text-gray-300 border-dark-700 hover:bg-dark-700'
+                                    }`}
+                                >
+                                    <ThumbsUp size={18} className={vid?.isLiked ? 'fill-current' : ''} />
+                                    <span>{vid?.likesCount || 0}</span>
+                                </button>
+
+                                {isOwner && (
+                                    <div className='flex items-center gap-2 bg-dark-900 px-4 py-2 rounded-full border border-dark-700'>
+                                        <button onClick={togglePublish} className='flex items-center gap-2 text-brand-400 hover:text-brand-300 transition-colors' title="Toggle Publish">
+                                            {toggleMode ? <ToggleRight /> : <ToggleLeft />}
+                                            <span className="text-sm font-medium">{toggleMode ? 'Published' : 'Private'}</span>
+                                        </button>
+                                        <div className="w-px h-6 bg-dark-700 mx-2"></div>
+                                        <button onClick={() => setShowEditVideoPopup(true)} className='p-2 text-gray-400 hover:text-white transition-colors' title="Edit Video">
+                                            <Pencil size={18}/>
+                                        </button>
+                                        <button onClick={deleteVideo} className='p-2 text-red-400 hover:text-red-300 transition-colors' title="Delete Video">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Description Box */}
@@ -236,7 +287,7 @@ const VideoPage = () => {
                         ) : comments.length > 0 ? (
                             comments.map((commentData) => {
                                 const { content, _id, owner, createdAt } = commentData;
-                                const isCommentOwner = userData?.user?._id === owner;
+                                const isCommentOwner = (userData?.user?._id || userData?.data?.user?._id) === owner;
                                 return (
                                     <div key={_id} className='group flex gap-3 items-start'>
                                         <div className="w-10 h-10 bg-dark-700 rounded-full shrink-0 flex items-center justify-center text-gray-400">

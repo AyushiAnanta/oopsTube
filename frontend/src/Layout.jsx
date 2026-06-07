@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import oopsTubelogo from './assets/oopsTube_logo.png';
 import { AuthContext } from './AuthContext';
 import axiosInstance from './utils/AxiosInstance';
-import { Home, Compass, PlaySquare, Clock, User as UserIcon, Search, MessageSquare } from 'lucide-react';
+import { Home, Compass, PlaySquare, Clock, User as UserIcon, Search, MessageSquare, Users } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const navigate = useNavigate();
@@ -80,6 +80,11 @@ const Layout = ({ children }) => {
             icon={<MessageSquare size={20} />} 
             label="Community" 
             to="/community" 
+          />
+          <SidebarItem 
+            icon={<Users size={20} />} 
+            label="Subscriptions" 
+            to="/subscriptions" 
           />
           <hr className="border-dark-700 my-4" />
           <SidebarItem 

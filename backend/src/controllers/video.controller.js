@@ -147,8 +147,11 @@ const publishAVideo = asyncHandler(async (req, res) => {
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
-    //TODO: get video by id
+    const { videoId } = req.params;
+    
+    if (!mongoose.isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid video ID");
+    }
 
     const checkVideoId = await Video.findByIdAndUpdate(
         videoId,
@@ -156,10 +159,10 @@ const getVideoById = asyncHandler(async (req, res) => {
             $inc: { views: 1 }
         },
         { new: true }
-    )
+    );
 
     if (!checkVideoId) {
-        throw new ApiError(400, "video not found")
+        throw new ApiError(400, "video not found");
     }
 
     if (req.user?._id) {
@@ -168,10 +171,44 @@ const getVideoById = asyncHandler(async (req, res) => {
             {
                 $addToSet: { watchHistory: videoId }
             }
-        )
+        );
     }
 
-    return res.status(200).json(new ApiResponse(200, checkVideoId , "video found successfully"))
+    // Aggregate to get likes
+    const videoData = await Video.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(videoId)
+            }
+        },
+        {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "video",
+                as: "likes"
+            }
+        },
+        {
+            $addFields: {
+                likesCount: { $size: "$likes" },
+                isLiked: {
+                    $cond: {
+                        if: { $in: [req.user?._id, "$likes.likedBy"] },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                likes: 0
+            }
+        }
+    ]);
+
+    return res.status(200).json(new ApiResponse(200, videoData[0], "video found successfully"));
 })
 
 const updateVideo = asyncHandler(async (req, res) => {

@@ -5,6 +5,7 @@ import UserProfile from './User/UserProfile';
 import VideoPage from './Video/VideoPage';
 import HomePage from './Video/HomePage';
 import SearchPage from './Video/SearchPage';
+import SubscriptionsPage from './Video/SubscriptionsPage';
 import CommunityPage from './Community/CommunityPage';
 import Layout from './Layout';
 
@@ -16,6 +17,7 @@ const App = () => {
       <Route path="/video/:videoId" element={<Layout><VideoPage /></Layout>}/>
       <Route path="/home" element={<Layout><HomePage /></Layout>}/>
       <Route path="/search" element={<Layout><SearchPage /></Layout>}/>
+      <Route path="/subscriptions" element={<Layout><SubscriptionsPage /></Layout>}/>
       <Route path="/community" element={<Layout><CommunityPage /></Layout>}/>
     </Routes>
   );

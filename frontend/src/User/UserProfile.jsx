@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
-import { Pencil, Plus, PlayCircle, Clock, KeyRound, Upload } from 'lucide-react';
+import { Pencil, Plus, PlayCircle, Clock, KeyRound, Upload, ThumbsUp } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../AuthContext';
 import AddVideoPopup from '../Video/AddVideoPopup';
@@ -11,6 +11,7 @@ const UserProfile = () => {
     const { userData } = useContext(AuthContext);
     const [historyList, setHistoryList] = useState([]);
     const [videos, setVideos] = useState([]);
+    const [likedVideos, setLikedVideos] = useState([]);
     const [addVideoPopup, setAddVideoPopup] = useState(false);
     const [accountUpdatePopup, setAccountUpdatePopup] = useState(false);
     const [changePasswordPopup, setChangePasswordPopup] = useState(false);
@@ -40,10 +41,19 @@ const UserProfile = () => {
         }
     };
 
+    const fetchLikedVideos = async () => {
+        try {
+            const res = await axiosInstance.get('/likes/videos');
+            setLikedVideos(res.data?.data || []);
+        } catch (error) {
+            console.error('Failed to fetch liked videos', error);
+        }
+    };
+
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true);
-            await Promise.all([fetchHistory(), fetchVideos()]);
+            await Promise.all([fetchHistory(), fetchVideos(), fetchLikedVideos()]);
             setIsLoading(false);
         };
         loadData();
@@ -258,6 +268,32 @@ const UserProfile = () => {
                         <Clock size={48} className="text-gray-600 mb-4" />
                         <h3 className="text-xl font-bold text-gray-300 mb-2">History is empty</h3>
                         <p className="text-gray-500 max-w-md">Videos you watch will show up here so you can easily find them later.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Liked Videos Section */}
+            <div className='px-4 md:px-12 mb-12'>
+                <div className='flex items-center gap-3 mb-6 border-b border-dark-700 pb-4'>
+                    <ThumbsUp className="text-brand-400 fill-brand-400" size={24} />
+                    <h2 className='text-2xl font-bold text-white'>Liked Videos</h2>
+                </div>
+
+                {isLoading ? (
+                    <div className="flex gap-6 overflow-hidden">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="w-[320px] h-[250px] bg-dark-800 rounded-xl animate-pulse-slow shrink-0" />
+                        ))}
+                    </div>
+                ) : likedVideos.length > 0 ? (
+                    <div className='flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x'>
+                        {likedVideos.map((video) => <div className="snap-start" key={video._id}><VideoCard video={video} /></div>)}
+                    </div>
+                ) : (
+                    <div className='w-full py-16 bg-dark-800/30 rounded-2xl border border-dark-700/50 flex flex-col items-center justify-center text-center'>
+                        <ThumbsUp size={48} className="text-gray-600 mb-4" />
+                        <h3 className="text-xl font-bold text-gray-300 mb-2">No liked videos</h3>
+                        <p className="text-gray-500 max-w-md">Videos you like will show up here.</p>
                     </div>
                 )}
             </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import axiosInstance from '../utils/AxiosInstance';
 import { AuthContext } from '../AuthContext';
-import { MessageSquarePlus, Trash2, Pencil, CircleUserRound, Send } from 'lucide-react';
+import { MessageSquarePlus, Trash2, Pencil, CircleUserRound, Send, ThumbsUp } from 'lucide-react';
 
 const CommunityPage = () => {
     const { userData } = useContext(AuthContext);
@@ -178,7 +178,38 @@ const CommunityPage = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">{tweet.content}</p>
+                                        <>
+                                            <p className="text-gray-200 leading-relaxed whitespace-pre-wrap mb-3">{tweet.content}</p>
+                                            <div className="flex items-center gap-4 mt-2">
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            const res = await axiosInstance.post(`/likes/toggle/t/${tweet._id}`);
+                                                            setTweets(prev => prev.map(t => {
+                                                                if (t._id === tweet._id) {
+                                                                    return {
+                                                                        ...t,
+                                                                        isLiked: res.data.data.liked,
+                                                                        likesCount: res.data.data.liked ? (t.likesCount || 0) + 1 : (t.likesCount || 0) - 1
+                                                                    };
+                                                                }
+                                                                return t;
+                                                            }));
+                                                        } catch (error) {
+                                                            console.error('Failed to toggle like', error);
+                                                        }
+                                                    }}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium transition-colors border text-sm ${
+                                                        tweet.isLiked 
+                                                            ? 'bg-brand-600/20 text-brand-400 border-brand-500/50 hover:bg-brand-600/30' 
+                                                            : 'bg-dark-800 text-gray-400 border-dark-700 hover:bg-dark-700 hover:text-gray-300'
+                                                    }`}
+                                                >
+                                                    <ThumbsUp size={16} className={tweet.isLiked ? 'fill-current' : ''} />
+                                                    <span>{tweet.likesCount || 0}</span>
+                                                </button>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </div>
